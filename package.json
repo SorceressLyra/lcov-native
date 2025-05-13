@@ -2,9 +2,11 @@
   "name": "lcov-coverage",
   "displayName": "LCOV Coverage",
   "author": "Lyra Mikkelsen",
+  "publisher": "inspectlyaps",
   "description": "Reads LCOV files and provides native VS Code test coverage",
   "icon": "resources/logo.png",
-  "version": "0.0.1",
+  "repository": "https://dev.azure.com/iKontrolAps/VSCode%20Extension/_git/lcov%20extension",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.100.0"
   },
@@ -51,32 +53,6 @@
           "type": "boolean",
           "default": true,
           "description": "Watch LCOV file for changes and automatically reload coverage"
-        },
-        "lcovCoverage.threshold.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable coverage threshold validation"
-        },
-        "lcovCoverage.threshold.line": {
-          "type": "number",
-          "default": 75,
-          "description": "Line coverage threshold percentage (0-100)",
-          "minimum": 0,
-          "maximum": 100
-        },
-        "lcovCoverage.threshold.function": {
-          "type": "number",
-          "default": 75,
-          "description": "Function coverage threshold percentage (0-100)",
-          "minimum": 0,
-          "maximum": 100
-        },
-        "lcovCoverage.threshold.branch": {
-          "type": "number",
-          "default": 75,
-          "description": "Branch coverage threshold percentage (0-100)",
-          "minimum": 0,
-          "maximum": 100
         }
       }
     }
@@ -87,7 +63,8 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "package": "npm run compile && vsce package"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

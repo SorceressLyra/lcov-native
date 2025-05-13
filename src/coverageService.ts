@@ -11,6 +11,7 @@ export class CoverageService {
   private lcovFilePath: string | undefined;
   private fileWatcher: vscode.FileSystemWatcher | undefined;
   private context: vscode.ExtensionContext;
+  private fileCoverageDetailMap = new WeakMap<vscode.FileCoverage, string>();
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -21,6 +22,70 @@ export class CoverageService {
       'lcovCoverageController',
       'LCOV Coverage'
     );
+    
+    // Create a test run profile with a loadDetailedCoverage callback
+    const profile = this.testController.createRunProfile(
+      'LCOV Coverage',
+      vscode.TestRunProfileKind.Coverage,
+      (request, token) => {
+        // This is empty since we add coverage manually
+      }
+    );
+    
+    // Add loadDetailedCoverage callback to provide inline coverage
+    profile.loadDetailedCoverage = async (run, fileCoverage, token) => {
+      try {
+        console.log(`Loading detailed coverage for ${fileCoverage.uri.toString()}`);
+
+        // Check if the URI is in a format that we support
+        if (!fileCoverage.uri.scheme || fileCoverage.uri.scheme === 'file') {
+          // First, check if we have this specific FileCoverage instance stored in our WeakMap
+          // This is important as VS Code passes the same FileCoverage object to this callback
+          const uriString = this.fileCoverageDetailMap.get(fileCoverage);
+          
+          if (uriString) {
+            console.log(`Found cached URI string for this FileCoverage instance: ${uriString}`);
+            
+            // Get detailed coverage directly from the parser using the URI
+            const details = this.parser.loadDetailedCoverage(fileCoverage.uri);
+            
+            if (details && details.length > 0) {
+              console.log(`Found ${details.length} coverage details for ${fileCoverage.uri.toString()}`);
+              return details;
+            }
+          } else {
+            console.log(`No cached URI found for this FileCoverage instance, using URI directly.`);
+          }
+          
+          // Fallback: Try to load detailed coverage directly from the URI
+          const details = this.parser.loadDetailedCoverage(fileCoverage.uri);
+          
+          if (details && details.length > 0) {
+            console.log(`Found ${details.length} coverage details for ${fileCoverage.uri.toString()}`);
+            return details;
+          } else {
+            console.log(`No detailed coverage found for ${fileCoverage.uri.toString()}`);
+            
+            // Log more information about the FileCoverage object
+            console.log(`FileCoverage details:`, {
+              uri: fileCoverage.uri.toString(),
+              statement: `${fileCoverage.statementCoverage.covered}/${fileCoverage.statementCoverage.total}`,
+              branch: fileCoverage.branchCoverage ? 
+                `${fileCoverage.branchCoverage.covered}/${fileCoverage.branchCoverage.total}` : 'none',
+              declaration: fileCoverage.declarationCoverage ? 
+                `${fileCoverage.declarationCoverage.covered}/${fileCoverage.declarationCoverage.total}` : 'none'
+            });
+          }
+        } else {
+          console.log(`Unsupported URI scheme: ${fileCoverage.uri.scheme}`);
+        }
+        
+        return [];
+      } catch (error) {
+        console.error(`Error loading detailed coverage: ${error instanceof Error ? error.message : String(error)}`);
+        return [];
+      }
+    };
 
     // Create status bar item
     this.statusBarItem = vscode.window.createStatusBarItem(
@@ -28,7 +93,6 @@ export class CoverageService {
       100
     );
     this.statusBarItem.text = '$(shield) LCOV Coverage';
-    this.statusBarItem.command = 'lcov-coverage.selectLcovFile';
     this.statusBarItem.tooltip = 'Select LCOV file to show coverage';
     this.statusBarItem.show();
     
@@ -123,22 +187,10 @@ export class CoverageService {
           return;
         }
         
-        // Update status bar with color based on threshold
-        const config = vscode.workspace.getConfiguration('lcovCoverage');
-        const lineThreshold = config.get<number>('threshold.line', 75);
-        const actualCoverage = parseFloat(coveragePercentage);
-           // Set status bar color based on threshold
-      if (actualCoverage < lineThreshold) {
-        // Warning color for below threshold
-        this.statusBarItem.text = `$(warning) ${coveragePercentage}% Coverage`;
-        this.statusBarItem.color = new vscode.ThemeColor('notificationsWarningIcon.foreground');
-      } else {
-        // Normal color for meeting threshold
-        this.statusBarItem.text = `$(shield) ${coveragePercentage}% Coverage`;
+        // Update status bar item
+        this.statusBarItem.text = `${coveragePercentage}% Coverage`;
         this.statusBarItem.color = undefined; // Use default color
-      }
-        
-        this.statusBarItem.tooltip = `${coveredLines}/${totalLines} lines covered (threshold: ${lineThreshold}%)`;
+        this.statusBarItem.tooltip = `${coveredLines}/${totalLines} lines covered`;
         
         // End any existing test run before creating a new one
         if (this.currentRun) {
@@ -178,13 +230,12 @@ export class CoverageService {
             });
           }
           
+          // Store the URI string in the WeakMap before adding the coverage to the run
+          this.fileCoverageDetailMap.set(coverage, coverage.uri.toString());
+          
           run.addCoverage(coverage);
         }
-        
-        // Validate against thresholds
-        const thresholdsPassed = this.validateThresholds(records);
-        
-        // Show completion message with coverage information in the progress notification
+         // Show completion message with coverage information in the progress notification
         progress.report({ 
           message: `✓ Coverage loaded: ${coveragePercentage}% (${coveredLines}/${totalLines} lines)`, 
           increment: 10 
@@ -193,9 +244,7 @@ export class CoverageService {
         // Add a small delay at the end so users can see the completion message
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Add a completion info icon based on whether thresholds passed
-        const icon = thresholdsPassed ? '$(check)' : '$(warning)';
-        this.statusBarItem.text = `${icon} ${coveragePercentage}% Coverage`;
+        this.statusBarItem.text = `${coveragePercentage}% Coverage`;
         
         // Ensure the test run is properly ended
         run.end();
@@ -394,77 +443,11 @@ export class CoverageService {
   }
 
   /**
-   * Validate coverage against thresholds
-   * @param records LCOV records to validate
-   * @returns True if all thresholds are met
+   * Placeholder for future validation logic
+   * Thresholds have been removed
    */
   private validateThresholds(records: any[]): boolean {
-    const config = vscode.workspace.getConfiguration('lcovCoverage');
-    const thresholdsEnabled = config.get<boolean>('threshold.enabled', true);
-    
-    if (!thresholdsEnabled) {
-      return true;
-    }
-    
-    // Get threshold values
-    const lineThreshold = config.get<number>('threshold.line', 75);
-    const functionThreshold = config.get<number>('threshold.function', 75);
-    const branchThreshold = config.get<number>('threshold.branch', 75);
-    
-    // Calculate total coverage
-    let totalLines = 0;
-    let coveredLines = 0;
-    let totalFunctions = 0;
-    let coveredFunctions = 0;
-    let totalBranches = 0;
-    let coveredBranches = 0;
-    
-    for (const record of records) {
-      // Line coverage
-      totalLines += record.lines.found;
-      coveredLines += record.lines.hit;
-      
-      // Function coverage
-      totalFunctions += record.functions.found;
-      coveredFunctions += record.functions.hit;
-      
-      // Branch coverage
-      totalBranches += record.branches.found;
-      coveredBranches += record.branches.hit;
-    }
-    
-    // Calculate percentages
-    const linePercentage = totalLines > 0 ? (coveredLines / totalLines * 100) : 100;
-    const functionPercentage = totalFunctions > 0 ? (coveredFunctions / totalFunctions * 100) : 100;
-    const branchPercentage = totalBranches > 0 ? (coveredBranches / totalBranches * 100) : 100;
-    
-    // Check thresholds
-    let allPassed = true;
-    let messages: string[] = [];
-    
-    if (linePercentage < lineThreshold) {
-      messages.push(`Line coverage (${linePercentage.toFixed(2)}%) below threshold (${lineThreshold}%)`);
-      allPassed = false;
-    }
-    
-    if (functionPercentage < functionThreshold) {
-      messages.push(`Function coverage (${functionPercentage.toFixed(2)}%) below threshold (${functionThreshold}%)`);
-      allPassed = false;
-    }
-    
-    if (branchPercentage < branchThreshold) {
-      messages.push(`Branch coverage (${branchPercentage.toFixed(2)}%) below threshold (${branchThreshold}%)`);
-      allPassed = false;
-    }
-    
-    // Show messages for failed thresholds
-    if (!allPassed) {
-      vscode.window.showWarningMessage(
-        `Coverage below threshold: ${messages.join(', ')}`
-      );
-    }
-    
-    return allPassed;
+    return true;
   }
 
   /**
