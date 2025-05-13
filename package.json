@@ -1,0 +1,106 @@
+{
+  "name": "lcov-coverage",
+  "displayName": "LCOV Coverage",
+  "author": "Lyra Mikkelsen",
+  "description": "Reads LCOV files and provides native VS Code test coverage",
+  "icon": "resources/logo.png",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Testing",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "lcov-coverage.selectLcovFile",
+        "title": "LCOV: Select Coverage File",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "lcov-coverage.findLcovFiles",
+        "title": "LCOV: Find and Load Coverage Files",
+        "icon": "$(search)"
+      },
+      {
+        "command": "lcov-coverage.clearCoverage",
+        "title": "LCOV: Clear Coverage",
+        "icon": "$(clear-all)"
+      }
+    ],
+    "configuration": {
+      "title": "LCOV Coverage",
+      "properties": {
+        "lcovCoverage.autoLoadCoverage": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically load coverage data from a specified LCOV file when the extension activates"
+        },
+        "lcovCoverage.lcovFilePath": {
+          "type": "string",
+          "default": "**/lcov.info",
+          "description": "Path to the LCOV file to auto-load (relative to workspace root or absolute path). Supports glob patterns."
+        },
+        "lcovCoverage.watchLcovFile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Watch LCOV file for changes and automatically reload coverage"
+        },
+        "lcovCoverage.threshold.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable coverage threshold validation"
+        },
+        "lcovCoverage.threshold.line": {
+          "type": "number",
+          "default": 75,
+          "description": "Line coverage threshold percentage (0-100)",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "lcovCoverage.threshold.function": {
+          "type": "number",
+          "default": 75,
+          "description": "Function coverage threshold percentage (0-100)",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "lcovCoverage.threshold.branch": {
+          "type": "number",
+          "default": 75,
+          "description": "Branch coverage threshold percentage (0-100)",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.100.0",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.25.1",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "lcov-parse": "^1.0.0"
+  }
+}
