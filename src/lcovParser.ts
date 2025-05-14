@@ -47,12 +47,16 @@ export interface LcovFileRecord {
 export class LcovParser {
   // Store a mapping of file URIs to their record data for detailed coverage
   private fileRecordMap = new Map<string, LcovFileRecord>();
+
+  // Map from file URI string to FileCoverage instance
+  private fileCoverageInstanceMap = new Map<string, vscode.FileCoverage>();
   
   /**
    * Clear the stored file records
    */
   public clearFileRecords(): void {
     this.fileRecordMap.clear();
+    this.fileCoverageInstanceMap.clear();
   }
   
   /**
@@ -86,6 +90,7 @@ export class LcovParser {
 
     // Clear previous records
     this.fileRecordMap.clear();
+    this.fileCoverageInstanceMap.clear();
 
     for (const record of records) {
       try {
@@ -192,6 +197,9 @@ export class LcovParser {
           branchCoverage,
           declarationCoverage
         );
+
+        // Store the FileCoverage instance for this URI
+        this.fileCoverageInstanceMap.set(uri.toString(), fileCoverage);
         
         // Note: We're now using fileRecordMap instead of a WeakMap
         
@@ -417,5 +425,26 @@ export class LcovParser {
       console.error(`Error loading detailed coverage for ${uri.toString()}: ${error instanceof Error ? error.message : String(error)}`);
       return [];
     }
+  }
+
+  /**
+   * Get the FileCoverage instance for a given URI string
+   */
+  public getFileCoverageInstance(uri: vscode.Uri): vscode.FileCoverage | undefined {
+    return this.fileCoverageInstanceMap.get(uri.toString());
+  }
+
+  /**
+   * Get all entries from the fileRecordMap for diagnostics
+   */
+  public getRecordEntries(): [string, LcovFileRecord][] {
+    return Array.from(this.fileRecordMap.entries());
+  }
+
+  /**
+   * Get the total number of records in the fileRecordMap
+   */
+  public getRecordCount(): number {
+    return this.fileRecordMap.size;
   }
 }

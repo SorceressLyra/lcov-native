@@ -22,6 +22,9 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 		vscode.commands.registerCommand('lcov-coverage.findLcovFiles', () => {
 			coverageService.findAndLoadLcovFiles();
+		}),
+		vscode.commands.registerCommand('lcov-coverage.inspectCoverageData', () => {
+			coverageService.inspectCoverageDataForFile();
 		})
 	);
 }
