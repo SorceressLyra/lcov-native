@@ -24,6 +24,7 @@ A simple VS Code extension that reads LCOV files and provides native VS Code tes
      - Jest: `jest --coverage`
      - Istanbul: `nyc --reporter=lcov`
      - Python: `pytest --cov=. --cov-report=lcov`
+     - Flutter `flutter test --coverage`
 
 2. Use the extension commands:
    - `LCOV: Find and Load Coverage Files` - Find and load LCOV files using the configured glob pattern
